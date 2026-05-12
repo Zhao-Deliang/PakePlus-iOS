@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>赵老师陪你上岸 · 27考研倒计时</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            lakers: {
+              purple: '#552583',
+              yellow: '#FDB927',
+              lightPurple: '#742DDD',
+              darkPurple: '#3D185C',
+              lightYellow: '#FFD700',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  <style>
+    /* 自定义进度条与动画 */
+    .progress-bar {
+      -webkit-appearance: none;
+      height: 8px;
+      border-radius: 4px;
+      background: #e0e0e0;
+      outline: none;
+    }
+    .progress-bar::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #FDB927;
+      cursor: pointer;
+      border: 2px solid #552583;
+    }
+    .calendar-day {
+      aspect-ratio: 1/1;
+    }
+    .fade-in {
+      animation: fadeIn 0.3s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .slide-up {
+      animation: slideUp 0.4s ease-out;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    /* 修复日历单元格点击时不会错位 */
+    [data-calendar-date] {
+      user-select: none;
+    }
+    /* 动态背景透明度 (Tailwind任意值支持) */
+    .bg-purple-custom {
+      background-color: #552583;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+  <header class="bg-lakers-purple text-white shadow-md">
+    <div class="container mx-auto px-4 py-3 flex justify-between items-center flex-wrap gap-2">
+      <h1 class="text-lg font-bold">赵老师陪你上岸</h1>
+      <div class="text-right text-sm">
+        <p>设计者：赵德良同志</p>
+        <p>学到赚到了 数经研帮帮</p>
+        <p>赵德良讲396</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-4 py-6">
+    <!-- 倒计时区域 -->
+    <section class="bg-white rounded-xl shadow-lg p-6 mb-6 text-center slide-up">
+      <h2 class="text-2xl font-bold text-lakers-purple mb-2">离27考研剩余天数</h2>
+      <div id="countdown" class="text-4xl font-bold text-lakers-yellow bg-lakers-purple rounded-lg py-4 my-3">
+        倒计时计算中...
+      </div>
+      <p class="text-gray-500 text-sm">考研日期：2026年12月19日</p>
+    </section>
+
+    <!-- 当前日期和任务区域 -->
+    <section class="bg-white rounded-xl shadow-lg p-6 mb-6 slide-up" style="animation-delay: 0.1s">
+      <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
+        <h2 id="current-date" class="text-xl font-bold text-lakers-purple"></h2>
+        <button id="add-task-btn" class="bg-lakers-yellow text-lakers-purple font-bold px-4 py-2 rounded-lg hover:bg-lakers-lightYellow transition-colors flex items-center">
+          <i class="fa fa-plus mr-2"></i> 新增任务
+        </button>
+      </div>
+      <div class="flex flex-wrap justify-between mb-4 gap-2">
+        <button id="clear-all-tasks" class="text-red-500 hover:text-red-700 text-sm flex items-center">
+          <i class="fa fa-trash mr-1"></i> 一键清除所有任务
+        </button>
+        <button id="import-tasks-btn" class="text-lakers-purple hover:text-lakers-lightPurple text-sm flex items-center">
+          <i class="fa fa-clipboard mr-1"></i> 粘贴导入任务
+        </button>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="border-b-2 border-lakers-purple">
+              <th class="pb-2 font-bold text-lakers-purple">科目</th>
+              <th class="pb-2 font-bold text-lakers-purple">任务</th>
+              <th class="pb-2 font-bold text-lakers-purple">时长</th>
+              <th class="pb-2 font-bold text-lakers-purple">完成度</th>
+              <th class="pb-2 font-bold text-lakers-purple">操作</th>
+            </tr>
+          </thead>
+          <tbody id="task-list">
+            <tr>
+              <td colspan="5" class="py-4 text-center text-gray-500">暂无任务，点击"新增任务"添加</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 日历区域 (修复日期偏移) -->
+    <section class="bg-white rounded-xl shadow-lg p-6 mb-6 slide-up" style="animation-delay: 0.2s">
+      <h2 class="text-xl font-bold text-lakers-purple mb-4">任务日历</h2>
+      <div class="mb-2 flex justify-between items-center">
+        <button id="prev-month" class="text-lakers-purple hover:text-lakers-lightPurple">
+          <i class="fa fa-chevron-left"></i>
+        </button>
+        <h3 id="current-month" class="font-bold"></h3>
+        <button id="next-month" class="text-lakers-purple hover:text-lakers-lightPurple">
+          <i class="fa fa-chevron-right"></i>
+        </button>
+      </div>
+      <div class="grid grid-cols-7 gap-1 mb-2 text-center text-sm font-medium text-gray-600">
+        <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+      </div>
+      <div id="calendar-grid" class="grid grid-cols-7 gap-1">
+        <!-- 日历动态渲染 -->
+      </div>
+    </section>
+  </main>
+
+  <!-- 任务模态框 -->
+  <div id="task-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden fade-in">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4 slide-up max-h-[90vh] overflow-y-auto">
+      <h3 class="text-xl font-bold text-lakers-purple mb-4">新增/编辑任务</h3>
+      <form id="task-form">
+        <input type="hidden" id="task-id">
+        <div class="mb-4">
+          <label class="block text-gray-700 mb-1" for="task-date">日期</label>
+          <input type="date" id="task-date" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+        </div>
+        <div class="mb-4">
+          <label class="block text-gray-700 mb-1">科目</label>
+          <div class="flex">
+            <select id="task-subject" class="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg">
+              <option value="">选择预设科目</option>
+              <option value="政治">政治</option>
+              <option value="英语">英语</option>
+              <option value="数学">数学</option>
+              <option value="专业课">专业课</option>
+              <option value="396经济类联考">396经济类联考</option>
+              <option value="其他">其他</option>
+            </select>
+            <button type="button" id="custom-subject-toggle" class="bg-lakers-purple text-white px-3 py-2 rounded-r-lg">
+              <i class="fa fa-pencil"></i>
+            </button>
+          </div>
+          <input type="text" id="custom-subject" placeholder="输入自定义科目" class="w-full mt-2 px-3 py-2 border border-gray-300 rounded-lg hidden">
+        </div>
+        <div class="mb-4">
+          <label class="block text-gray-700 mb-1" for="task-content">任务内容</label>
+          <textarea id="task-content" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="请输入任务内容"></textarea>
+        </div>
+        <div class="mb-4">
+          <label class="block text-gray-700 mb-1" for="task-duration">时长（分钟）</label>
+          <input type="number" id="task-duration" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="例如：60">
+        </div>
+        <div class="mb-4">
+          <label class="flex items-center">
+            <input type="checkbox" id="is-review-task" class="mr-2">
+            <span class="text-gray-700">设置为记忆类任务（需要复习）</span>
+          </label>
+        </div>
+        <div id="review-settings" class="mb-4 hidden">
+          <label class="block text-gray-700 mb-1">复习设置</label>
+          <div class="flex items-center mb-2">
+            <input type="radio" id="review-after-days" name="review-type" value="after" checked class="mr-2">
+            <label for="review-after-days" class="mr-4">几天后复习</label>
+            <input type="number" id="review-days" min="1" value="1" class="w-16 px-2 py-1 border border-gray-300 rounded">
+          </div>
+          <div class="flex items-center">
+            <input type="radio" id="review-every-days" name="review-type" value="every" class="mr-2">
+            <label for="review-every-days" class="mr-4">每几天复习一次</label>
+            <input type="number" id="review-interval" min="1" value="1" class="w-16 px-2 py-1 border border-gray-300 rounded">
+            <label class="ml-4">次数：</label>
+            <input type="number" id="review-count" min="1" value="3" class="w-16 px-2 py-1 border border-gray-300 rounded">
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 mt-6">
+          <button type="button" id="cancel-task" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100">取消</button>
+          <button type="submit" class="px-4 py-2 bg-lakers-yellow text-lakers-purple font-bold rounded-lg hover:bg-lakers-lightYellow">保存任务</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 导入模态框 -->
+  <div id="import-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden fade-in">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4 slide-up">
+      <h3 class="text-xl font-bold text-lakers-purple mb-4">导入任务</h3>
+      <div class="mb-4 p-3 bg-gray-100 rounded-lg">
+        <p class="text-sm text-gray-700 mb-2 font-medium">导入格式说明：</p>
+        <p class="text-xs text-gray-600">每行一个任务，格式：日期,科目,任务内容,时长(分钟)</p>
+        <p class="text-xs text-gray-600">示例：2026-05-20,英语,背诵50个单词,30</p>
+      </div>
+      <textarea id="import-content" rows="6" class="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4" placeholder="请粘贴符合格式的任务内容"></textarea>
+      <div class="flex justify-end gap-3">
+        <button id="cancel-import" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100">取消</button>
+        <button id="confirm-import" class="px-4 py-2 bg-lakers-yellow text-lakers-purple font-bold rounded-lg hover:bg-lakers-lightYellow">确认导入</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 计时器模态框 -->
+  <div id="timer-modal" class="fixed inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center z-50 hidden fade-in">
+    <div class="text-center w-full max-w-md px-4">
+      <h3 id="timer-task-subject" class="text-xl font-bold text-lakers-yellow mb-2"></h3>
+      <p id="timer-task-content" class="text-white mb-6"></p>
+      <div id="timer-display" class="text-6xl font-bold text-white mb-8">00:00</div>
+      <div class="flex flex-wrap justify-center gap-4 mb-6">
+        <button id="timer-start" class="px-6 py-3 bg-lakers-yellow text-lakers-purple font-bold rounded-lg hover:bg-lakers-lightYellow"><i class="fa fa-play mr-2"></i>开始</button>
+        <button id="timer-pause" class="px-6 py-3 bg-gray-600 text-white font-bold rounded-lg hover:bg-gray-500 hidden"><i class="fa fa-pause mr-2"></i>暂停</button>
+        <button id="timer-reset" class="px-6 py-3 bg-gray-600 text-white font-bold rounded-lg hover:bg-gray-500"><i class="fa fa-refresh mr-2"></i>重置</button>
+      </div>
+      <div class="flex justify-center gap-4">
+        <button id="timer-edit" class="px-4 py-2 border border-white text-white rounded-lg hover:bg-white hover:text-black"><i class="fa fa-edit mr-2"></i>编辑任务</button>
+        <button id="timer-close" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500"><i class="fa fa-times mr-2"></i>关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 提示toast -->
+  <div id="completion-toast" class="fixed top-20 left-1/2 transform -translate-x-1/2 bg-lakers-purple text-white px-6 py-4 rounded-lg shadow-xl z-50 hidden fade-in text-center">
+    <p class="font-bold">赵老师说：我相信你会上岸的！(๑•̀ㅂ•́)و✧</p>
+  </div>
+
+  <!-- 删除确认框 -->
+  <div id="confirm-delete-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden fade-in">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4 slide-up text-center">
+      <h3 class="text-xl font-bold text-red-500 mb-4">确认删除</h3>
+      <p class="mb-6">你确定要删除这个任务吗？此操作无法撤销。</p>
+      <input type="hidden" id="delete-task-id">
+      <div class="flex justify-center gap-4">
+        <button id="cancel-delete" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100">取消</button>
+        <button id="confirm-delete" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500">确认删除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 清空确认框 -->
+  <div id="confirm-clear-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden fade-in">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4 slide-up text-center">
+      <h3 class="text-xl font-bold text-red-500 mb-4">确认清空所有任务</h3>
+      <p class="mb-6">你确定要删除所有任务吗？此操作无法撤销。</p>
+      <div class="flex justify-center gap-4">
+        <button id="cancel-clear" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100">取消</button>
+        <button id="confirm-clear" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500">确认清空</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---------- 全局变量 ----------
+    let displayedDate = new Date();    // 当前页面展示的日期（用于任务列表+日历高亮）
+    let tasks = JSON.parse(localStorage.getItem('kaoyanTasks')) || {};
+    let currentTimer = null;
+    let timerSeconds = 0;
+    let activeTaskId = null;
+
+    // 考研日期: 2026年12月19日 (27考研)
+    const examDate = new Date(2026, 11, 19); // 月份11 = 12月
+
+    // ---------- 辅助函数 ----------
+    function getDateString(date) {
+      if (!date) return '';
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function parseDateFromYMD(dateStr) {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      return new Date(year, month - 1, day);
+    }
+
+    // 修正时区影响：只用来比较日期 (年月日)
+    function isSameDay(date1, date2) {
+      return date1.getFullYear() === date2.getFullYear() &&
+             date1.getMonth() === date2.getMonth() &&
+             date1.getDate() === date2.getDate();
+    }
+
+    function generateTaskId() {
+      return Date.now().toString(36) + Math.random().toString(36).substr(2, 6);
+    }
+
+    function saveTasks() {
+      localStorage.setItem('kaoyanTasks', JSON.stringify(tasks));
+    }
+
+    // 查找任意日期的任务
+    function findTaskById(taskId) {
+      for (const dateStr in tasks) {
+        const found = tasks[dateStr].find(t => t.id === taskId);
+        if (found) return found;
+      }
+      return null;
+    }
+
+    // 更新当前显示日期的任务表格
+    function renderTasks() {
+      const tbody = document.getElementById('task-list');
+      const dateStr = getDateString(displayedDate);
+      const dateTasks = tasks[dateStr] || [];
+      tbody.innerHTML = '';
+      if (dateTasks.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-500">暂无任务，点击"新增任务"添加</td></tr>';
+        return;
+      }
+      dateTasks.forEach(task => {
+        const row = document.createElement('tr');
+        row.className = 'border-b border-gray-200 hover:bg-gray-50 transition-colors';
+        row.innerHTML = `
+          <td class="py-3">${escapeHtml(task.subject)}</td>
+          <td class="py-3">${escapeHtml(task.content)}</td>
+          <td class="py-3">${task.duration}分钟</td>
+          <td class="py-3">
+            <div class="flex items-center gap-2">
+              <input type="range" min="0" max="100" value="${task.progress}" class="progress-bar flex-1" data-task-id="${task.id}">
+              <span class="w-10 text-center text-sm">${task.progress}%</span>
+            </div>
+          </td>
+          <td class="py-3 whitespace-nowrap">
+            <button class="start-timer text-lakers-purple hover:text-lakers-lightPurple mr-2" data-task-id="${task.id}"><i class="fa fa-play"></i></button>
+            <button class="edit-task text-blue-500 hover:text-blue-700 mr-2" data-task-id="${task.id}"><i class="fa fa-edit"></i></button>
+            <button class="delete-task text-red-500 hover:text-red-700" data-task-id="${task.id}"><i class="fa fa-trash"></i></button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+      // 绑定进度条事件
+      document.querySelectorAll('.progress-bar').forEach(bar => {
+        bar.addEventListener('input', function(e) {
+          const tid = e.target.dataset.taskId;
+          const newProgress = parseInt(e.target.value);
+          e.target.nextElementSibling.innerText = `${newProgress}%`;
+          updateTaskProgress(tid, newProgress);
+          if (newProgress === 100) showCompletionToast();
+        });
+      });
+      // 绑定按钮事件
+      document.querySelectorAll('.start-timer').forEach(btn => {
+        btn.addEventListener('click', (e) => startTimerForTask(btn.dataset.taskId));
+      });
+      document.querySelectorAll('.edit-task').forEach(btn => {
+        btn.addEventListener('click', (e) => editTaskById(btn.dataset.taskId));
+      });
+      document.querySelectorAll('.delete-task').forEach(btn => {
+        btn.addEventListener('click', (e) => showDeleteConfirmation(btn.dataset.taskId));
+      });
+    }
+
+    function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
+    function updateTaskProgress(taskId, progress) {
+      const dateStr = getDateString(displayedDate);
+      if (tasks[dateStr]) {
+        const task = tasks[dateStr].find(t => t.id === taskId);
+        if (task) { task.progress = progress; saveTasks(); renderCalendar(); }
+      }
+    }
+    function showCompletionToast() {
+      const toast = document.getElementById('completion-toast');
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 3000);
+    }
+
+    // 日历渲染 (关键修复: 日期点击偏移)
+    function renderCalendar() {
+      const grid = document.getElementById('calendar-grid');
+      const year = displayedDate.getFullYear();
+      const month = displayedDate.getMonth();
+      const firstDayOfMonth = new Date(year, month, 1);
+      const startWeekday = firstDayOfMonth.getDay(); // 0周日
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      grid.innerHTML = '';
+      // 填充空白格
+      for (let i = 0; i < startWeekday; i++) {
+        const emptyDiv = document.createElement('div');
+        emptyDiv.className = 'calendar-day';
+        grid.appendChild(emptyDiv);
+      }
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      for (let d = 1; d <= daysInMonth; d++) {
+        const cellDate = new Date(year, month, d);
+        const dateStr = getDateString(cellDate);
+        const completionRate = calculateCompletionRate(dateStr);
+        let bgIntensity = 0;
+        if (completionRate > 0) bgIntensity = 0.2 + (completionRate / 100) * 0.6;
+        const bgStyle = completionRate > 0 ? `rgba(85, 37, 131, ${bgIntensity})` : '#f3f4f6';
+        const isTodayFlag = isSameDay(cellDate, today);
+        const isSelectedFlag = isSameDay(cellDate, displayedDate);
+        const dayDiv = document.createElement('div');
+        dayDiv.className = `calendar-day flex items-center justify-center rounded-full cursor-pointer transition-all hover:scale-105 text-sm font-medium`;
+        dayDiv.style.backgroundColor = bgStyle;
+        if (isTodayFlag) dayDiv.style.boxShadow = '0 0 0 2px #FDB927';
+        if (isSelectedFlag) dayDiv.style.boxShadow = '0 0 0 2px #552583';
+        dayDiv.textContent = d;
+        dayDiv.setAttribute('data-calendar-date', dateStr);
+        dayDiv.addEventListener('click', (function(dateObj) {
+          return function() {
+            // 关键修复: 基于日期对象重新设置 displayedDate，保证日期准确
+            displayedDate = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+            updateCurrentDateDisplay();
+            renderTasks();
+            renderCalendar();   // 重新渲染高亮
+          };
+        })(cellDate));
+        grid.appendChild(dayDiv);
+      }
+      document.getElementById('current-month').innerText = `${year}年 ${month+1}月`;
+    }
+
+    function calculateCompletionRate(dateStr) {
+      const dateTasks = tasks[dateStr] || [];
+      if (!dateTasks.length) return 0;
+      const total = dateTasks.reduce((sum, t) => sum + (t.progress || 0), 0);
+      return Math.round(total / dateTasks.length);
+    }
+
+    function updateCalendarCompletion() { renderCalendar(); }
+
+    // 更新头部日期显示
+    function updateCurrentDateDisplay() {
+      const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+      document.getElementById('current-date').textContent = displayedDate.toLocaleDateString('zh-CN', options);
+    }
+
+    // 倒计时更新
+    function updateCountdown() {
+      const now = new Date();
+      const diffTime = examDate - now;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      document.getElementById('countdown').innerHTML = diffDays > 0 ? `倒计时 ${diffDays} 天` : `考研已开始，祝上岸！`;
+    }
+
+    // 任务保存 (含复习)
+    function saveTaskFormHandler() {
+      const taskId = document.getElementById('task-id').value || generateTaskId();
+      let dateStr = document.getElementById('task-date').value;
+      if (!dateStr) { alert('请选择日期'); return; }
+      let subject = document.getElementById('task-subject').value;
+      const customSubject = document.getElementById('custom-subject');
+      if (!customSubject.classList.contains('hidden') && customSubject.value.trim()) subject = customSubject.value.trim();
+      const content = document.getElementById('task-content').value.trim();
+      const duration = parseInt(document.getElementById('task-duration').value);
+      if (!subject || !content || isNaN(duration) || duration <= 0) { alert('请完整填写科目、任务内容和有效时长'); return; }
+      const isReview = document.getElementById('is-review-task').checked;
+      if (!tasks[dateStr]) tasks[dateStr] = [];
+      const existingIdx = tasks[dateStr].findIndex(t => t.id === taskId);
+      const newTask = {
+        id: taskId,
+        subject, content, duration, progress: 0,
+        createdAt: new Date().toISOString()
+      };
+      if (existingIdx !== -1) newTask.progress = tasks[dateStr][existingIdx].progress;
+      if (existingIdx !== -1) tasks[dateStr][existingIdx] = newTask;
+      else tasks[dateStr].push(newTask);
+      // 复习逻辑
+      if (isReview && !document.getElementById('task-id').value) { // 仅新任务自动生成复习
+        const afterDays = document.getElementById('review-after-days').checked;
+        if (afterDays) {
+          const daysLater = parseInt(document.getElementById('review-days').value) || 1;
+          const revDate = parseDateFromYMD(dateStr);
+          revDate.setDate(revDate.getDate() + daysLater);
+          const revDateStr = getDateString(revDate);
+          if (!tasks[revDateStr]) tasks[revDateStr] = [];
+          tasks[revDateStr].push({
+            id: generateTaskId(), subject: `${subject} (复习)`, content: `复习：${content}`,
+            duration: Math.max(5, Math.floor(duration/2)), progress: 0, isReview: true, originalTaskId: taskId
+          });
+        } else {
+          const interval = parseInt(document.getElementById('review-interval').value) || 1;
+          const count = parseInt(document.getElementById('review-count').value) || 3;
+          for (let i=1; i<=count; i++) {
+            const revDate = parseDateFromYMD(dateStr);
+            revDate.setDate(revDate.getDate() + interval * i);
+            const revDateStr = getDateString(revDate);
+            if (!tasks[revDateStr]) tasks[revDateStr] = [];
+            tasks[revDateStr].push({
+              id: generateTaskId(), subject: `${subject} (复习 ${i}/${count})`, content: `复习：${content}`,
+              duration: Math.max(5, Math.floor(duration/2)), progress: 0, isReview: true, originalTaskId: taskId
+            });
+          }
+        }
+      }
+      saveTasks();
+      renderTasks();
+      renderCalendar();
+      document.getElementById('task-modal').classList.add('hidden');
+    }
+
+    function editTaskById(taskId) {
+      const task = findTaskById(taskId);
+      if (!task) return;
+      document.getElementById('task-id').value = task.id;
+      let taskDate = null;
+      for (const [d, arr] of Object.entries(tasks)) {
+        if (arr.some(t => t.id === taskId)) { taskDate = d; break; }
+      }
+      if (taskDate) document.getElementById('task-date').value = taskDate;
+      document.getElementById('task-subject').value = task.subject;
+      document.getElementById('custom-subject').classList.add('hidden');
+      document.getElementById('task-content').value = task.content;
+      document.getElementById('task-duration').value = task.duration;
+      document.getElementById('is-review-task').checked = false;
+      document.getElementById('review-settings').classList.add('hidden');
+      document.getElementById('task-modal').classList.remove('hidden');
+    }
+
+    function showDeleteConfirmation(taskId) {
+      document.getElementById('delete-task-id').value = taskId;
+      document.getElementById('confirm-delete-modal').classList.remove('hidden');
+    }
+    function deleteTaskById(taskId) {
+      for (const dateStr in tasks) {
+        tasks[dateStr] = tasks[dateStr].filter(t => t.id !== taskId);
+        if (tasks[dateStr].length === 0) delete tasks[dateStr];
+      }
+      // 删除关联复习原任务id
+      for (const dateStr in tasks) {
+        tasks[dateStr] = tasks[dateStr].filter(t => t.originalTaskId !== taskId);
+        if (tasks[dateStr].length === 0) delete tasks[dateStr];
+      }
+      saveTasks();
+      renderTasks();
+      renderCalendar();
+    }
+    function clearAllTasks() { tasks = {}; saveTasks(); renderTasks(); renderCalendar(); }
+
+    function importTasksFromText() {
+      const raw = document.getElementById('import-content').value.trim();
+      if (!raw) { alert('请粘贴内容'); return; }
+      let count = 0;
+      raw.split(/\r?\n/).forEach(line => {
+        if (!line.trim()) return;
+        const parts = line.split(',').map(s => s.trim());
+        if (parts.length !== 4) return;
+        const [dateStr, subject, content, durationStr] = parts;
+        const duration = parseInt(durationStr);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr) || !subject || !content || isNaN(duration) || duration<=0) return;
+        if (!tasks[dateStr]) tasks[dateStr] = [];
+        tasks[dateStr].push({ id: generateTaskId(), subject, content, duration, progress: 0, createdAt: new Date().toISOString() });
+        count++;
+      });
+      if (count) { saveTasks(); renderTasks(); renderCalendar(); alert(`成功导入 ${count} 个任务`); document.getElementById('import-modal').classList.add('hidden'); }
+      else alert('导入失败，检查格式：日期,科目,任务内容,分钟');
+    }
+
+    // 计时器相关
+    function startTimerForTask(taskId) {
+      const task = findTaskById(taskId);
+      if (!task) return;
+      activeTaskId = taskId;
+      timerSeconds = task.duration * 60;
+      document.getElementById('timer-task-subject').innerText = task.subject;
+      document.getElementById('timer-task-content').innerText = task.content;
+      updateTimerDisplay();
+      document.getElementById('timer-modal').classList.remove('hidden');
+    }
+    function startTimer() { if (currentTimer) return; currentTimer = setInterval(() => { if (timerSeconds <= 0) { clearInterval(currentTimer); currentTimer=null; document.getElementById('timer-start').classList.remove('hidden'); document.getElementById('timer-pause').classList.add('hidden'); updateTaskProgress(activeTaskId, 100); renderTasks(); showCompletionToast(); } else { timerSeconds--; updateTimerDisplay(); } }, 1000); document.getElementById('timer-start').classList.add('hidden'); document.getElementById('timer-pause').classList.remove('hidden'); }
+    function pauseTimer() { if (currentTimer) { clearInterval(currentTimer); currentTimer=null; document.getElementById('timer-start').classList.remove('hidden'); document.getElementById('timer-pause').classList.add('hidden'); } }
+    function resetTimer() { pauseTimer(); const t = findTaskById(activeTaskId); if(t) timerSeconds = t.duration*60; updateTimerDisplay(); }
+    function stopTimer() { pauseTimer(); activeTaskId = null; }
+    function updateTimerDisplay() { const m = Math.floor(timerSeconds/60); const s = timerSeconds%60; document.getElementById('timer-display').innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`; }
+
+    function setupEventListeners() {
+      document.getElementById('add-task-btn').onclick = () => { document.getElementById('task-form').reset(); document.getElementById('task-id').value=''; document.getElementById('custom-subject').classList.add('hidden'); document.getElementById('review-settings').classList.add('hidden'); document.getElementById('task-date').value = getDateString(displayedDate); document.getElementById('task-modal').classList.remove('hidden'); };
+      document.getElementById('custom-subject-toggle').onclick = () => document.getElementById('custom-subject').classList.toggle('hidden');
+      document.getElementById('is-review-task').onchange = e => document.getElementById('review-settings').classList.toggle('hidden', !e.target.checked);
+      document.getElementById('cancel-task').onclick = () => document.getElementById('task-modal').classList.add('hidden');
+      document.getElementById('task-form').onsubmit = (e) => { e.preventDefault(); saveTaskFormHandler(); };
+      document.getElementById('import-tasks-btn').onclick = () => document.getElementById('import-modal').classList.remove('hidden');
+      document.getElementById('cancel-import').onclick = () => document.getElementById('import-modal').classList.add('hidden');
+      document.getElementById('confirm-import').onclick = importTasksFromText;
+      document.getElementById('prev-month').onclick = () => { displayedDate.setMonth(displayedDate.getMonth()-1); renderCalendar(); updateCurrentDateDisplay(); renderTasks(); };
+      document.getElementById('next-month').onclick = () => { displayedDate.setMonth(displayedDate.getMonth()+1); renderCalendar(); updateCurrentDateDisplay(); renderTasks(); };
+      document.getElementById('clear-all-tasks').onclick = () => document.getElementById('confirm-clear-modal').classList.remove('hidden');
+      document.getElementById('cancel-clear').onclick = () => document.getElementById('confirm-clear-modal').classList.add('hidden');
+      document.getElementById('confirm-clear').onclick = () => { clearAllTasks(); document.getElementById('confirm-clear-modal').classList.add('hidden'); };
+      document.getElementById('timer-close').onclick = () => { stopTimer(); document.getElementById('timer-modal').classList.add('hidden'); };
+      document.getElementById('timer-start').onclick = startTimer;
+      document.getElementById('timer-pause').onclick = pauseTimer;
+      document.getElementById('timer-reset').onclick = resetTimer;
+      document.getElementById('timer-edit').onclick = () => { stopTimer(); document.getElementById('timer-modal').classList.add('hidden'); editTaskById(activeTaskId); };
+      document.getElementById('confirm-delete').onclick = () => { deleteTaskById(document.getElementById('delete-task-id').value); document.getElementById('confirm-delete-modal').classList.add('hidden'); };
+      document.getElementById('cancel-delete').onclick = () => document.getElementById('confirm-delete-modal').classList.add('hidden');
+    }
+
+    // 初始化
+    function init() {
+      updateCountdown();
+      setInterval(updateCountdown, 86400000);
+      updateCurrentDateDisplay();
+      renderTasks();
+      renderCalendar();
+      setupEventListeners();
+    }
+    init();
+  </script>
+</body>
+</html>
